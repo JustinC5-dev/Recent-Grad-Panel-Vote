@@ -246,7 +246,7 @@
   <header>
     <div class="header-eyebrow">Decade of Excellence · Industry Pharmacy Panel</div>
     <div class="header-title">Audience Vote</div>
-    <div class="header-sub">Tap a panelist whenever something resonates with you</div>
+    <div class="header-sub">Tap the + button whenever something resonates with you or if you like a panelist's response!</div>
   </header>
 
   <div class="live-bar">
@@ -317,7 +317,7 @@ function buildCards() {
         <div class="count-label">pts</div>
       </div>
       <div class="bar-track"><div class="bar-fill" id="bar-${p.key}" style="width:0%"></div></div>
-      <button class="tap-btn" id="btn-${p.key}">+ That resonated</button>
+      <button class="tap-btn" id="btn-${p.key}">+ Upvote</button>
     `;
     card.addEventListener('click', e => handleVote(p.key, e, card));
     grid.appendChild(card);
