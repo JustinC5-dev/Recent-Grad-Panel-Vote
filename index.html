@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Panel Vote — Decade of Excellence</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #0D1B3E;
+    --navy2:  #132040;
+    --gold:   #C9A84C;
+    --gold2:  #A0782A;
+    --cream:  #F5F0E8;
+    --white:  #FFFFFF;
+    --muted:  #8A9BB5;
+    --card1:  #1A3A6B;
+    --card2:  #0F6E56;
+    --card3:  #7F3B1A;
+    --card4:  #5C2D6E;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--navy);
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /* ── LOADING ── */
+  #loading {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: var(--navy); z-index: 100;
+    gap: 1rem;
+    transition: opacity 0.4s ease;
+  }
+  #loading.fade { opacity: 0; pointer-events: none; }
+  .loader-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    color: var(--gold);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2px solid var(--navy2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── LAYOUT ── */
+  #app {
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+             env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 1.1rem 1.25rem 0.7rem;
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .header-eyebrow {
+    font-size: 0.62rem; letter-spacing: 0.2em;
+    color: var(--gold2); text-transform: uppercase; font-weight: 500;
+  }
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+    color: var(--white); line-height: 1.2;
+  }
+  .header-sub {
+    font-size: 0.72rem; color: var(--muted); margin-top: 2px;
+  }
+
+  /* ── LIVE INDICATOR ── */
+  .live-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0.45rem 1.25rem;
+    background: rgba(201,168,76,0.06);
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4ade80;
+    animation: pulse-dot 1.8s ease infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+  .live-text { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
+  .voter-count { margin-left: auto; font-size: 0.7rem; color: var(--gold2); }
+
+  /* ── CARDS GRID ── */
+  .grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .card {
+    background: var(--navy2);
+    border-radius: 14px;
+    border: 1px solid rgba(201,168,76,0.15);
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 1rem 0.75rem 0.85rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+    cursor: pointer;
+    -webkit-user-select: none; user-select: none;
+  }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent);
+    opacity: 0.85;
+  }
+  .card.pressed { transform: scale(0.96); }
+  .card.leader { border-color: rgba(201,168,76,0.55); }
+
+  .avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 500;
+    color: var(--accent-text);
+    margin-bottom: 0.55rem;
+    font-family: 'DM Sans', sans-serif;
+    flex-shrink: 0;
+  }
+
+  .card-name {
+    font-size: 0.82rem; font-weight: 500;
+    color: var(--cream); text-align: center;
+    line-height: 1.2; margin-bottom: 0.6rem;
+    min-height: 2em;
+  }
+
+  .count-wrap {
+    display: flex; align-items: baseline; gap: 3px;
+    margin-bottom: 0.1rem;
+  }
+  .count {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 8vw, 2.8rem);
+    color: var(--white); line-height: 1;
+    transition: transform 0.15s ease;
+  }
+  .count.pop { transform: scale(1.18); }
+  .count-label { font-size: 0.65rem; color: var(--muted); align-self: flex-end; padding-bottom: 4px; }
+
+  /* bar */
+  .bar-track {
+    width: 100%; height: 3px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 2px; overflow: hidden;
+    margin: 0.55rem 0 0.75rem;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.45s cubic-bezier(.22,.68,0,1.2);
+  }
+
+  /* tap btn */
+  .tap-btn {
+    width: 100%;
+    padding: 0.6rem 0;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent-text-btn);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.03em;
+  }
+  .tap-btn:active { background: rgba(201,168,76,0.12); transform: scale(0.97); }
+
+  /* leader badge */
+  .leader-badge {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 0.55rem; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: rgba(201,168,76,0.15);
+    color: var(--gold);
+    padding: 2px 6px; border-radius: 4px;
+  }
+
+  /* ripple */
+  .ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(201,168,76,0.18);
+    pointer-events: none;
+    animation: ripple-anim 0.5s ease-out forwards;
+  }
+  @keyframes ripple-anim {
+    from { transform: scale(0); opacity: 1; }
+    to   { transform: scale(4); opacity: 0; }
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 0.6rem 1.25rem;
+    border-top: 1px solid rgba(201,168,76,0.1);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .footer-note { font-size: 0.65rem; color: var(--muted); }
+  .total-votes { font-size: 0.65rem; color: var(--gold2); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold); font-size: 0.75rem; padding: 0.5rem 1.1rem;
+    border-radius: 20px; opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loader-title">Decade of Excellence</div>
+  <div class="spinner"></div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="header-eyebrow">Decade of Excellence · Industry Pharmacy Panel</div>
+    <div class="header-title">Audience Vote</div>
+    <div class="header-sub">Tap a panelist whenever something resonates with you</div>
+  </header>
+
+  <div class="live-bar">
+    <div class="live-dot"></div>
+    <span class="live-text">LIVE · updates in real time</span>
+    <span class="voter-count" id="voter-count"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <span class="footer-note">Stay on this page throughout the panel</span>
+    <span class="total-votes" id="total-votes">0 total votes</span>
+  </footer>
+</div>
+
+<div id="toast">Voted!</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, runTransaction, increment, set, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBmCszVXUBI3MWNmudFJCXRuN2dVmaeH1A",
+  authDomain: "recent-graduates-panel-vote.firebaseapp.com",
+  databaseURL: "https://recent-graduates-panel-vote-default-rtdb.firebaseio.com",
+  projectId: "recent-graduates-panel-vote",
+  storageBucket: "recent-graduates-panel-vote.firebasestorage.app",
+  messagingSenderId: "516711627824",
+  appId: "1:516711627824:web:ec392b618195b821cd81f5",
+  measurementId: "G-R70K5517TD"
+};
+
+const PANELISTS = [
+  { key: "p1", name: "Panelist 1", accent: "#C9A84C", accentDim: "rgba(201,168,76,0.15)", accentText: "#7a5e1e", accentBtn: "#C9A84C" },
+  { key: "p2", name: "Panelist 2", accent: "#1D9E75", accentDim: "rgba(29,158,117,0.15)", accentText: "#0d5c43", accentBtn: "#1D9E75" },
+  { key: "p3", name: "Panelist 3", accent: "#D4537E", accentDim: "rgba(212,83,126,0.15)", accentText: "#8b2a4f", accentBtn: "#D4537E" },
+  { key: "p4", name: "Panelist 4", accent: "#7F77DD", accentDim: "rgba(127,119,221,0.15)", accentText: "#3c3489", accentBtn: "#7F77DD" }
+];
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+let scores = { p1: 0, p2: 0, p3: 0, p4: 0 };
+let sessionId = Math.random().toString(36).slice(2);
+
+function initials(name) {
+  return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function buildCards() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  PANELISTS.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'card-' + p.key;
+    card.style.setProperty('--accent', p.accent);
+    card.style.setProperty('--accent-dim', p.accentDim);
+    card.style.setProperty('--accent-text', p.accentText);
+    card.style.setProperty('--accent-text-btn', p.accentBtn);
+    card.innerHTML = `
+      <div class="avatar" id="av-${p.key}">${initials(p.name)}</div>
+      <div class="card-name" id="nm-${p.key}">${p.name}</div>
+      <div class="count-wrap">
+        <div class="count" id="ct-${p.key}">0</div>
+        <div class="count-label">pts</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="bar-${p.key}" style="width:0%"></div></div>
+      <button class="tap-btn" id="btn-${p.key}">+ That resonated</button>
+    `;
+    card.addEventListener('click', e => handleVote(p.key, e, card));
+    grid.appendChild(card);
+  });
+}
+
+function handleVote(key, e, card) {
+  const btnRef = ref(db, `votes/${key}`);
+  runTransaction(btnRef, cur => (cur || 0) + 1);
+
+  const rect = card.getBoundingClientRect();
+  const rip = document.createElement('div');
+  rip.className = 'ripple';
+  const size = Math.max(rect.width, rect.height);
+  rip.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+  card.appendChild(rip);
+  rip.addEventListener('animationend', () => rip.remove());
+
+  const ct = document.getElementById('ct-' + key);
+  ct.classList.remove('pop');
+  void ct.offsetWidth;
+  ct.classList.add('pop');
+  setTimeout(() => ct.classList.remove('pop'), 200);
+
+  showToast();
+
+  set(ref(db, `sessions/${sessionId}/last`), { key, ts: Date.now() });
+}
+
+function updateUI(data) {
+  scores = data || { p1: 0, p2: 0, p3: 0, p4: 0 };
+  const vals = PANELISTS.map(p => scores[p.key] || 0);
+  const maxVal = Math.max(...vals, 1);
+  const maxScore = Math.max(...vals);
+  let total = 0;
+
+  PANELISTS.forEach((p, i) => {
+    const v = vals[i];
+    total += v;
+    document.getElementById('ct-' + p.key).textContent = v;
+    document.getElementById('bar-' + p.key).style.width = Math.round((v / maxVal) * 100) + '%';
+
+    const card = document.getElementById('card-' + p.key);
+    const existing = card.querySelector('.leader-badge');
+    if (v > 0 && v === maxScore) {
+      card.classList.add('leader');
+      if (!existing) {
+        const badge = document.createElement('div');
+        badge.className = 'leader-badge';
+        badge.textContent = 'Leading';
+        card.appendChild(badge);
+      }
+    } else {
+      card.classList.remove('leader');
+      if (existing) existing.remove();
+    }
+  });
+
+  document.getElementById('total-votes').textContent = total + ' total vote' + (total !== 1 ? 's' : '');
+}
+
+let toastTimer;
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1200);
+}
+
+onValue(ref(db, 'votes'), snap => {
+  updateUI(snap.val());
+});
+
+onValue(ref(db, 'meta/panelists'), snap => {
+  const data = snap.val();
+  if (!data) return;
+  PANELISTS.forEach(p => {
+    const name = data[p.key];
+    if (name) {
+      p.name = name;
+      const nm = document.getElementById('nm-' + p.key);
+      const av = document.getElementById('av-' + p.key);
+      if (nm) nm.textContent = name;
+      if (av) av.textContent = initials(name);
+    }
+  });
+});
+
+onValue(ref(db, 'sessions'), snap => {
+  const count = snap.val() ? Object.keys(snap.val()).length : 0;
+  document.getElementById('voter-count').textContent = count + ' device' + (count !== 1 ? 's' : '') + ' connected';
+});
+
+buildCards();
+
+set(ref(db, `sessions/${sessionId}`), { joined: Date.now(), active: true });
+
+setTimeout(() => {
+  document.getElementById('loading').classList.add('fade');
+  setTimeout(() => {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+  }, 400);
+}, 1200);
+</script>
+</body>
+</html>
