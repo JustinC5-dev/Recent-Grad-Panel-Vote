@@ -16,10 +16,6 @@
     --cream:  #F5F0E8;
     --white:  #FFFFFF;
     --muted:  #8A9BB5;
-    --card1:  #1A3A6B;
-    --card2:  #0F6E56;
-    --card3:  #7F3B1A;
-    --card4:  #5C2D6E;
   }
 
   html, body {
@@ -31,7 +27,6 @@
     overscroll-behavior: none;
   }
 
-  /* ── LOADING ── */
   #loading {
     position: fixed; inset: 0;
     display: flex; flex-direction: column;
@@ -55,7 +50,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── LAYOUT ── */
   #app {
     min-height: 100dvh;
     display: flex; flex-direction: column;
@@ -63,7 +57,6 @@
              env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
   }
 
-  /* ── HEADER ── */
   header {
     padding: 1.1rem 1.25rem 0.7rem;
     border-bottom: 1px solid rgba(201,168,76,0.2);
@@ -82,7 +75,6 @@
     font-size: 0.72rem; color: var(--muted); margin-top: 2px;
   }
 
-  /* ── LIVE INDICATOR ── */
   .live-bar {
     display: flex; align-items: center; gap: 6px;
     padding: 0.45rem 1.25rem;
@@ -101,7 +93,6 @@
   .live-text { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
   .voter-count { margin-left: auto; font-size: 0.7rem; color: var(--gold2); }
 
-  /* ── CARDS GRID ── */
   .grid {
     flex: 1;
     display: grid;
@@ -120,7 +111,6 @@
     position: relative;
     overflow: hidden;
     transition: border-color 0.3s;
-    cursor: pointer;
     -webkit-user-select: none; user-select: none;
   }
   .card::before {
@@ -129,7 +119,6 @@
     background: var(--accent);
     opacity: 0.85;
   }
-  .card.pressed { transform: scale(0.96); }
   .card.leader { border-color: rgba(201,168,76,0.55); }
 
   .avatar {
@@ -161,9 +150,9 @@
     transition: transform 0.15s ease;
   }
   .count.pop { transform: scale(1.18); }
+  .count.pop-down { transform: scale(0.88); }
   .count-label { font-size: 0.65rem; color: var(--muted); align-self: flex-end; padding-bottom: 4px; }
 
-  /* bar */
   .bar-track {
     width: 100%; height: 3px;
     background: rgba(255,255,255,0.07);
@@ -176,9 +165,12 @@
     transition: width 0.45s cubic-bezier(.22,.68,0,1.2);
   }
 
-  /* tap btn */
+  .btn-row {
+    display: flex; gap: 6px; width: 100%;
+  }
+
   .tap-btn {
-    width: 100%;
+    flex: 1;
     padding: 0.6rem 0;
     border-radius: 8px;
     border: 1px solid var(--accent);
@@ -192,7 +184,13 @@
   }
   .tap-btn:active { background: rgba(201,168,76,0.12); transform: scale(0.97); }
 
-  /* leader badge */
+  .down-btn {
+    flex: 0 0 38%;
+    border-color: var(--muted);
+    color: var(--muted);
+  }
+  .down-btn:active { background: rgba(138,155,181,0.12); transform: scale(0.97); }
+
   .leader-badge {
     position: absolute; top: 8px; right: 8px;
     font-size: 0.55rem; font-weight: 500;
@@ -202,19 +200,20 @@
     padding: 2px 6px; border-radius: 4px;
   }
 
-  /* ripple */
   .ripple {
     position: absolute; border-radius: 50%;
     background: rgba(201,168,76,0.18);
     pointer-events: none;
     animation: ripple-anim 0.5s ease-out forwards;
   }
+  .ripple-down {
+    background: rgba(138,155,181,0.18);
+  }
   @keyframes ripple-anim {
     from { transform: scale(0); opacity: 1; }
     to   { transform: scale(4); opacity: 0; }
   }
 
-  /* ── FOOTER ── */
   footer {
     padding: 0.6rem 1.25rem;
     border-top: 1px solid rgba(201,168,76,0.1);
@@ -223,7 +222,6 @@
   .footer-note { font-size: 0.65rem; color: var(--muted); }
   .total-votes { font-size: 0.65rem; color: var(--gold2); }
 
-  /* ── TOAST ── */
   #toast {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
     background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.3);
@@ -233,6 +231,11 @@
     pointer-events: none; white-space: nowrap;
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.down-toast {
+    background: rgba(138,155,181,0.15);
+    border-color: rgba(138,155,181,0.3);
+    color: var(--muted);
+  }
 </style>
 </head>
 <body>
@@ -246,7 +249,7 @@
   <header>
     <div class="header-eyebrow">Decade of Excellence · Industry Pharmacy Panel</div>
     <div class="header-title">Audience Vote</div>
-    <div class="header-sub">Tap the + button whenever something resonates with you or if you like a panelist's response!</div>
+    <div class="header-sub">Tap a panelist whenever something resonates with you</div>
   </header>
 
   <div class="live-bar">
@@ -263,11 +266,11 @@
   </footer>
 </div>
 
-<div id="toast">Voted!</div>
+<div id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, runTransaction, increment, set, serverTimestamp }
+import { getDatabase, ref, onValue, runTransaction, set }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -317,34 +320,50 @@ function buildCards() {
         <div class="count-label">pts</div>
       </div>
       <div class="bar-track"><div class="bar-fill" id="bar-${p.key}" style="width:0%"></div></div>
-      <button class="tap-btn" id="btn-${p.key}">+ Upvote</button>
+      <div class="btn-row">
+        <button class="tap-btn" id="btn-${p.key}">+ Upvote</button>
+        <button class="tap-btn down-btn" id="btn-down-${p.key}">− Down</button>
+      </div>
     `;
-    card.addEventListener('click', e => handleVote(p.key, e, card));
+    card.querySelector('#btn-' + p.key).addEventListener('click', e => handleVote(p.key, e, card));
+    card.querySelector('#btn-down-' + p.key).addEventListener('click', e => handleDownvote(p.key, e, card));
     grid.appendChild(card);
   });
 }
 
-function handleVote(key, e, card) {
-  const btnRef = ref(db, `votes/${key}`);
-  runTransaction(btnRef, cur => (cur || 0) + 1);
-
+function spawnRipple(card, e, isDown) {
   const rect = card.getBoundingClientRect();
   const rip = document.createElement('div');
-  rip.className = 'ripple';
+  rip.className = 'ripple' + (isDown ? ' ripple-down' : '');
   const size = Math.max(rect.width, rect.height);
   rip.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
   card.appendChild(rip);
   rip.addEventListener('animationend', () => rip.remove());
+}
 
+function popCount(key, isDown) {
   const ct = document.getElementById('ct-' + key);
-  ct.classList.remove('pop');
+  ct.classList.remove('pop', 'pop-down');
   void ct.offsetWidth;
-  ct.classList.add('pop');
-  setTimeout(() => ct.classList.remove('pop'), 200);
+  ct.classList.add(isDown ? 'pop-down' : 'pop');
+  setTimeout(() => ct.classList.remove('pop', 'pop-down'), 200);
+}
 
-  showToast();
-
+function handleVote(key, e, card) {
+  e.stopPropagation();
+  runTransaction(ref(db, `votes/${key}`), cur => (cur || 0) + 1);
+  spawnRipple(card, e, false);
+  popCount(key, false);
+  showToast(false);
   set(ref(db, `sessions/${sessionId}/last`), { key, ts: Date.now() });
+}
+
+function handleDownvote(key, e, card) {
+  e.stopPropagation();
+  runTransaction(ref(db, `votes/${key}`), cur => Math.max((cur || 0) - 1, 0));
+  spawnRipple(card, e, true);
+  popCount(key, true);
+  showToast(true);
 }
 
 function updateUI(data) {
@@ -380,16 +399,16 @@ function updateUI(data) {
 }
 
 let toastTimer;
-function showToast() {
+function showToast(isDown) {
   const t = document.getElementById('toast');
+  t.textContent = isDown ? '− Vote removed' : '+ Vote counted';
+  t.className = isDown ? 'down-toast' : '';
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 1200);
 }
 
-onValue(ref(db, 'votes'), snap => {
-  updateUI(snap.val());
-});
+onValue(ref(db, 'votes'), snap => updateUI(snap.val()));
 
 onValue(ref(db, 'meta/panelists'), snap => {
   const data = snap.val();
@@ -412,7 +431,6 @@ onValue(ref(db, 'sessions'), snap => {
 });
 
 buildCards();
-
 set(ref(db, `sessions/${sessionId}`), { joined: Date.now(), active: true });
 
 setTimeout(() => {
