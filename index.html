@@ -322,7 +322,7 @@ function buildCards() {
       <div class="bar-track"><div class="bar-fill" id="bar-${p.key}" style="width:0%"></div></div>
       <div class="btn-row">
         <button class="tap-btn" id="btn-${p.key}">+ Upvote</button>
-        <button class="tap-btn down-btn" id="btn-down-${p.key}">− Down</button>
+        <button class="tap-btn down-btn" id="btn-down-${p.key}">− Downvote</button>
       </div>
     `;
     card.querySelector('#btn-' + p.key).addEventListener('click', e => handleVote(p.key, e, card));
